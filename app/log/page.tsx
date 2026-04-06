@@ -149,7 +149,8 @@ export default async function LogPage() {
   if (allTimeCount === 500) celebrations.push("⭐ 500 all-time! You're a Closer now!");
   if (allTimeCount === 1000) celebrations.push("💎 1000 all-time! Crusher status achieved!");
 
-  const recentLogs = logs.slice(0, 10);
+  // Recent activity — show only YOUR logs, limit to 5
+  const myRecentLogs = logs.filter((l) => l.userName === session.userName).slice(0, 5);
 
   // Weekly MVP (show on Monday)
   const isMonday = new Date().getDay() === 1;
@@ -312,16 +313,43 @@ export default async function LogPage() {
 
       <Separator />
 
-      {/* Recent activity feed */}
+      {/* Manager: Team overview — tap a rep to see their stats */}
+      {session.role === "manager" && teamStats.leaderboard.length > 0 && (
+        <>
+          <Separator />
+          <div>
+            <h2 className="text-sm font-semibold text-muted-foreground mb-2">Your Team</h2>
+            <div className="flex flex-col gap-1.5">
+              {teamStats.leaderboard.map((rep: { name: string; total: number }, i: number) => (
+                <Link
+                  key={rep.name}
+                  href={`/dashboard/rep/${encodeURIComponent(rep.name)}`}
+                  className="flex items-center gap-2 rounded-lg bg-card px-3 py-2.5 text-sm border hover:border-primary/50 transition-colors"
+                >
+                  <span className={`font-mono w-5 text-center text-xs ${i === 0 ? "text-yellow-400 font-bold" : "text-muted-foreground"}`}>
+                    {i + 1}
+                  </span>
+                  <span className="flex-1 font-medium">{rep.name}</span>
+                  <span className="font-mono font-bold">{rep.total}</span>
+                  <span className="text-xs text-muted-foreground">&rsaquo;</span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Your recent activity */}
+      <Separator />
       <div>
-        <h2 className="text-sm font-semibold text-muted-foreground mb-2">Recent Activity</h2>
-        {recentLogs.length === 0 ? (
+        <h2 className="text-sm font-semibold text-muted-foreground mb-2">Your Recent Activity</h2>
+        {myRecentLogs.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-4">
             No activity yet today. Start tapping!
           </p>
         ) : (
           <div className="flex flex-col gap-1.5">
-            {recentLogs.map((log) => {
+            {myRecentLogs.map((log) => {
               const emoji = getEmoji(log.activityTypeIcon);
               const time = new Date(log.createdAt).toLocaleTimeString([], {
                 hour: "numeric",
@@ -334,8 +362,6 @@ export default async function LogPage() {
                 >
                   <span>{emoji}</span>
                   <span className="flex-1 truncate">
-                    <span className="font-medium">{log.userName}</span>
-                    <span className="text-muted-foreground"> logged </span>
                     <span style={{ color: log.activityTypeColor }} className="font-medium">
                       {log.activityTypeName}
                     </span>
@@ -343,7 +369,7 @@ export default async function LogPage() {
                   <OutcomeTag
                     logId={log.id}
                     currentOutcome={log.outcome ?? null}
-                    isOwner={log.userName === session.userName}
+                    isOwner={true}
                   />
                   <span className="text-xs text-muted-foreground font-mono shrink-0">{time}</span>
                 </div>
