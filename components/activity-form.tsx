@@ -48,6 +48,8 @@ export function ActivityForm({ activityTypeId, emoji, name, color, count }: Acti
       addOptimistic(1);
       const formData = new FormData();
       formData.set("activityTypeId", activityTypeId);
+      const note = (window as unknown as Record<string, string>).__sf_note;
+      if (note) formData.set("contactName", note);
       const result = await logActivityAction(formData);
       if (result?.logId) {
         window.dispatchEvent(

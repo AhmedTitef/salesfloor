@@ -11,7 +11,8 @@ import { UndoToast } from "@/components/undo-toast";
 import { HotStreakProvider } from "@/components/hot-streak";
 import { Onboarding } from "@/components/onboarding";
 import { OfflineSync } from "@/components/offline-sync";
-import { OutcomeTag } from "@/components/outcome-tag";
+import { ActivityActions } from "@/components/activity-actions";
+import { NotesInput } from "@/components/notes-input";
 import { LiveUpdates } from "@/components/live-updates";
 import { ChallengeBanner } from "@/components/challenge-banner";
 import { BroadcastBanner } from "@/components/broadcast-banner";
@@ -296,6 +297,9 @@ export default async function LogPage() {
 
       <Separator />
 
+      {/* Notes input */}
+      <NotesInput />
+
       {/* Activity buttons grid */}
       <HotStreakProvider>
         <div className="grid grid-cols-2 gap-3">
@@ -361,23 +365,23 @@ export default async function LogPage() {
                 hour: "numeric",
                 minute: "2-digit",
               });
+              const note = "contactName" in log ? (log.contactName as string) : null;
               return (
                 <div
                   key={log.id}
                   className="flex items-center gap-2 rounded-md bg-card px-3 py-2 text-sm border"
                 >
                   <span>{emoji}</span>
-                  <span className="flex-1 truncate">
+                  <span className="flex-1 min-w-0">
                     <span style={{ color: log.activityTypeColor }} className="font-medium">
                       {log.activityTypeName}
                     </span>
+                    {note && (
+                      <span className="text-xs text-muted-foreground ml-1.5">— {note}</span>
+                    )}
                   </span>
-                  <OutcomeTag
-                    logId={log.id}
-                    currentOutcome={log.outcome ?? null}
-                    isOwner={true}
-                  />
                   <span className="text-xs text-muted-foreground font-mono shrink-0">{time}</span>
+                  <ActivityActions logId={log.id} />
                 </div>
               );
             })}
