@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { useMemoryDb } from "@/db";
-import { memoryDb } from "@/db/memory";
+import * as queries from "@/db/queries";
 
 export async function GET(request: NextRequest) {
   const raw = request.cookies.get("sf_session")?.value;
@@ -38,9 +37,7 @@ export async function GET(request: NextRequest) {
       start.setHours(0, 0, 0, 0);
   }
 
-  const logs = useMemoryDb
-    ? memoryDb.getActivityLogs(session.teamId, { start, limit: 10000 })
-    : [];
+  const logs = await queries.getActivityLogs(session.teamId, { start, limit: 10000 });
 
   // Build CSV
   const header = "Date,Time,Rep,Activity,Outcome";

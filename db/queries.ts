@@ -105,9 +105,13 @@ export async function getStats(teamId: string, start: Date, end: Date) {
     teamStats[at.name] = logs.filter(l => l.activityTypeId === at.id).length
   }
 
-  // Per-rep stats (exclude managers)
+  // Per-user stats (include everyone who has logged activity)
+  const activeUserIds = new Set(logs.map(l => l.userId))
+  const activeUsers = teamUsers.filter(u => activeUserIds.has(u.id))
+  // Also include reps with 0 activity so they show on the board
   const reps = teamUsers.filter(u => u.role === 'rep')
-  const repStats = reps.map(u => {
+  const allRelevant = [...new Map([...activeUsers, ...reps].map(u => [u.id, u])).values()]
+  const repStats = allRelevant.map(u => {
     const userLogs = logs.filter(l => l.userId === u.id)
     const counts: Record<string, number> = {}
     for (const at of teamTypes) {

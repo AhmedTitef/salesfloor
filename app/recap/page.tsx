@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { useMemoryDb } from "@/db";
 import { memoryDb } from "@/db/memory";
+import * as queries from "@/db/queries";
 
 async function getSessionData() {
   const cookieStore = await cookies();
@@ -23,9 +24,7 @@ export default async function RecapPage() {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  const stats = useMemoryDb
-    ? memoryDb.getStats(session.teamId, today, new Date())
-    : { teamStats: {}, repStats: [], leaderboard: [] };
+  const stats = await queries.getStats(session.teamId, today, new Date());
 
   const totalActivities = Object.values(stats.teamStats).reduce(
     (sum: number, c: number) => sum + c,
