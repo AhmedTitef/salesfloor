@@ -17,11 +17,11 @@ export async function PATCH(request: NextRequest) {
     if (useMemoryDb) {
       memoryDb.updateTeam(session.teamId, { dailyGoal: body.dailyGoal })
     } else {
-      // dailyGoal isn't in the Drizzle schema (it's in the session cookie)
-      // We update the session cookie directly
+      const db = getDb()
+      await db.update(schema.teams).set({ dailyGoal: body.dailyGoal }).where(eq(schema.teams.id, session.teamId))
     }
 
-    // Update the session cookie so the goal reflects immediately
+    // Also update the session cookie for immediate UI feedback
     const updatedSession = { ...session, dailyGoal: body.dailyGoal, iat: Date.now() }
     const res = NextResponse.json({ success: true, dailyGoal: body.dailyGoal })
     res.cookies.set('sf_session', JSON.stringify(updatedSession), {

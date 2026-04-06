@@ -21,6 +21,9 @@ export const teams = pgTable('teams', {
   name: text('name').notNull(),
   pin: text('pin').notNull(),
   orgId: uuid('org_id').references(() => organizations.id),
+  dailyGoal: integer('daily_goal').default(50).notNull(),
+  workStartHour: integer('work_start_hour').default(8).notNull(),
+  workEndHour: integer('work_end_hour').default(17).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 
@@ -30,6 +33,8 @@ export const users = pgTable('users', {
   name: text('name').notNull(),
   email: text('email'),
   role: text('role', { enum: ['rep', 'manager'] }).notNull(),
+  personalGoal: integer('personal_goal'),
+  daysOff: text('days_off'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 

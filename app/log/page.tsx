@@ -78,11 +78,13 @@ export default async function LogPage() {
 
   const activityTypes = await queries.getActivityTypesByTeam(session.teamId);
 
-  // Check for personal goal
-  const currentUser = useMemoryDb ? memoryDb.findUserById(session.userId) : null;
-  const effectiveGoal = currentUser?.personalGoal ?? session.dailyGoal ?? 50;
+  // Get goal + schedule from DB (works on both memory and Postgres)
+  const teamSettings = await queries.getTeamSettings(session.teamId);
+  const userProfile = await queries.getUserProfile(session.userId);
+  const effectiveGoal = userProfile?.personalGoal ?? teamSettings.dailyGoal;
+  const daysOffArray = userProfile?.daysOff ? userProfile.daysOff.split(",").map(Number).filter((n) => !isNaN(n)) : undefined;
 
-  // Playbook
+  // Playbook (memory-only feature for now)
   const team = useMemoryDb ? memoryDb.findTeamById(session.teamId) : null;
   const playbook = team?.playbook || [];
 
@@ -100,7 +102,7 @@ export default async function LogPage() {
   const totalToday = Object.values(counts).reduce((sum, c) => sum + c, 0);
 
   // Streak & personal best
-  const streak = await queries.getUserStreak(session.userId, session.teamId);
+  const streak = await queries.getUserStreak(session.userId, session.teamId, daysOffArray);
   const pb = await queries.getUserPersonalBest(session.userId, session.teamId);
 
   // Leaderboard position
@@ -118,14 +120,14 @@ export default async function LogPage() {
   if (effectiveGoal > 0 && !goalHit) {
     const now = new Date();
     const endOfDay = new Date(now);
-    endOfDay.setHours(team?.workEndHour ?? 17, 0, 0, 0);
+    endOfDay.setHours(teamSettings.workEndHour, 0, 0, 0);
     const hoursLeft = Math.max(0, (endOfDay.getTime() - now.getTime()) / (1000 * 60 * 60));
     const remaining = effectiveGoal - totalToday;
     if (hoursLeft <= 0) {
       paceMessage = `${remaining} left — push to close it out!`;
     } else if (remaining > 0) {
       const perHour = Math.ceil(remaining / hoursLeft);
-      const endHour = team?.workEndHour ?? 17;
+      const endHour = teamSettings.workEndHour;
       const endLabel = endHour > 12 ? `${endHour - 12}pm` : `${endHour}am`;
       paceMessage = `${remaining} left — ~${perHour}/hr to hit goal by ${endLabel}`;
     }
@@ -200,6 +202,9 @@ export default async function LogPage() {
               <span>{streak}d</span>
             </div>
           )}
+          <Link href="/profile" className="text-xs text-muted-foreground hover:text-foreground underline">
+            Profile
+          </Link>
           {session.role === "manager" && (
             <Link href="/dashboard" className="text-xs text-muted-foreground hover:text-foreground underline">
               Dashboard

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-const PROTECTED_PAGES = ['/log', '/dashboard', '/settings', '/recap', '/tv', '/contacts', '/org']
+const PROTECTED_PAGES = ['/log', '/dashboard', '/settings', '/recap', '/tv', '/contacts', '/org', '/profile']
 const PROTECTED_API = ['/api/activities', '/api/stats', '/api/activity-types', '/api/org']
 const SESSION_MAX_AGE = 60 * 60 * 24 * 30 // 30 days
 const ROTATION_INTERVAL = 60 * 60 * 24 * 1000 // 24 hours in ms
@@ -52,5 +52,5 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/log', '/log/:path*', '/dashboard', '/dashboard/:path*', '/settings', '/settings/:path*', '/recap', '/recap/:path*', '/tv', '/tv/:path*', '/contacts', '/contacts/:path*', '/org', '/org/:path*', '/api/activities/:path*', '/api/stats/:path*', '/api/activity-types/:path*', '/api/org/:path*'],
+  matcher: ['/log', '/log/:path*', '/dashboard', '/dashboard/:path*', '/settings', '/settings/:path*', '/recap', '/recap/:path*', '/tv', '/tv/:path*', '/contacts', '/contacts/:path*', '/org', '/org/:path*', '/profile', '/profile/:path*', '/api/activities/:path*', '/api/stats/:path*', '/api/activity-types/:path*', '/api/org/:path*'],
 }

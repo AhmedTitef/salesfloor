@@ -5,6 +5,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { ActivityHeatmap } from "@/components/activity-heatmap";
 import { useMemoryDb } from "@/db";
 import { memoryDb } from "@/db/memory";
+import * as queries from "@/db/queries";
+import { RepProfileEditor } from "@/components/rep-profile-editor";
 
 async function getSessionData() {
   const cookieStore = await cookies();
@@ -28,18 +30,14 @@ export default async function RepCoachingPage({
   const { name } = await params;
   const repName = decodeURIComponent(name);
 
-  const teamUsers = useMemoryDb ? memoryDb.getUsersByTeam(session.teamId) : [];
-  const rep = teamUsers.find((u) => u.name === repName && u.role === "rep");
+  const teamReps = await queries.getTeamReps(session.teamId);
+  const rep = teamReps.find((u) => u.name === repName);
   if (!rep) redirect("/dashboard");
 
-  const activityTypes = useMemoryDb
-    ? memoryDb.getActivityTypesByTeam(session.teamId)
-    : [];
+  const activityTypes = await queries.getActivityTypesByTeam(session.teamId);
 
   // Get all logs for this rep
-  const allLogs = useMemoryDb
-    ? memoryDb.getActivityLogs(session.teamId, { limit: 500 }).filter((l) => l.userName === repName)
-    : [];
+  const allLogs = (await queries.getActivityLogs(session.teamId, { limit: 500 })).filter((l) => l.userName === repName);
 
   // Today's stats
   const today = new Date();
@@ -72,11 +70,10 @@ export default async function RepCoachingPage({
   const avgPerDay = dailyTotals.length > 0 ? Math.round(weekTotal / dailyTotals.length) : 0;
   const maxDay = Math.max(...dailyTotals.map((d) => d.count), 1);
 
-  // Streak
-  const streak = useMemoryDb ? memoryDb.getUserStreak(rep.id, session.teamId) : 0;
-  const pb = useMemoryDb
-    ? memoryDb.getUserPersonalBest(rep.id, session.teamId)
-    : { best: 0, isNewBest: false };
+  // Streak (respect days off)
+  const repDaysOff = rep.daysOff ? rep.daysOff.split(",").map(Number).filter((n) => !isNaN(n)) : undefined;
+  const streak = await queries.getUserStreak(rep.id, session.teamId, repDaysOff);
+  const pb = await queries.getUserPersonalBest(rep.id, session.teamId);
 
   // Consistency score: days with activity / 7
   const activeDays = dailyTotals.filter((d) => d.count > 0).length;
@@ -90,7 +87,10 @@ export default async function RepCoachingPage({
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold">{repName}</h1>
-          <p className="text-xs text-muted-foreground">Rep Coaching View</p>
+          <p className="text-xs text-muted-foreground">
+            Rep Coaching View
+            {rep.daysOff && <span> &middot; Off: {rep.daysOff.split(",").map((d) => ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][Number(d)]).join(", ")}</span>}
+          </p>
         </div>
         <Link
           href="/dashboard"
@@ -99,6 +99,13 @@ export default async function RepCoachingPage({
           Back
         </Link>
       </div>
+
+      <RepProfileEditor
+        repId={rep.id}
+        repName={rep.name}
+        personalGoal={rep.personalGoal ?? null}
+        daysOff={rep.daysOff ?? null}
+      />
 
       {/* Key metrics */}
       <div className="grid grid-cols-4 gap-2">

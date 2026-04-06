@@ -4,14 +4,60 @@ import { memoryDb } from './memory'
 import * as schema from './schema'
 import { eq, and, gte, lte, desc, sql } from 'drizzle-orm'
 
+// ============ Team Settings ============
+
+export async function getTeamSettings(teamId: string): Promise<{ dailyGoal: number; workStartHour: number; workEndHour: number }> {
+  if (useMemoryDb) {
+    const team = memoryDb.findTeamById(teamId)
+    return { dailyGoal: team?.dailyGoal ?? 50, workStartHour: team?.workStartHour ?? 8, workEndHour: team?.workEndHour ?? 17 }
+  }
+  const db = getDb()
+  const [team] = await db.select({
+    dailyGoal: schema.teams.dailyGoal,
+    workStartHour: schema.teams.workStartHour,
+    workEndHour: schema.teams.workEndHour,
+  }).from(schema.teams).where(eq(schema.teams.id, teamId)).limit(1)
+  return { dailyGoal: team?.dailyGoal ?? 50, workStartHour: team?.workStartHour ?? 8, workEndHour: team?.workEndHour ?? 17 }
+}
+
+// ============ User Profile ============
+
+export async function getUserProfile(userId: string): Promise<{ name: string; personalGoal: number | null; daysOff: string | null } | null> {
+  if (useMemoryDb) {
+    const user = memoryDb.findUserById(userId)
+    if (!user) return null
+    return { name: user.name, personalGoal: user.personalGoal, daysOff: user.daysOff ?? null }
+  }
+  const db = getDb()
+  const [user] = await db.select({
+    name: schema.users.name,
+    personalGoal: schema.users.personalGoal,
+    daysOff: schema.users.daysOff,
+  }).from(schema.users).where(eq(schema.users.id, userId)).limit(1)
+  return user ?? null
+}
+
+export async function updateUserProfile(userId: string, data: { name?: string; personalGoal?: number | null; daysOff?: string | null }) {
+  if (useMemoryDb) {
+    return memoryDb.updateUser(userId, data)
+  }
+  const db = getDb()
+  const updates: Record<string, unknown> = {}
+  if (data.name !== undefined) updates.name = data.name
+  if (data.personalGoal !== undefined) updates.personalGoal = data.personalGoal
+  if (data.daysOff !== undefined) updates.daysOff = data.daysOff
+  await db.update(schema.users).set(updates).where(eq(schema.users.id, userId))
+}
+
 // ============ Team Members ============
 
 export async function getTeamReps(teamId: string) {
   if (useMemoryDb) {
-    return memoryDb.getUsersByTeam(teamId).filter(u => u.role === 'rep').map(u => ({ id: u.id, name: u.name }))
+    return memoryDb.getUsersByTeam(teamId).filter(u => u.role === 'rep')
+      .map(u => ({ id: u.id, name: u.name, personalGoal: u.personalGoal, daysOff: u.daysOff }))
   }
   const db = getDb()
-  return db.select({ id: schema.users.id, name: schema.users.name })
+  return db.select({ id: schema.users.id, name: schema.users.name, personalGoal: schema.users.personalGoal, daysOff: schema.users.daysOff })
     .from(schema.users)
     .where(and(eq(schema.users.teamId, teamId), eq(schema.users.role, 'rep')))
 }
@@ -141,9 +187,9 @@ export async function getStats(teamId: string, start: Date, end: Date) {
 
 // ============ Streaks ============
 
-export async function getUserStreak(userId: string, teamId: string): Promise<number> {
+export async function getUserStreak(userId: string, teamId: string, daysOff?: number[]): Promise<number> {
   if (useMemoryDb) {
-    return memoryDb.getUserStreak(userId, teamId)
+    return memoryDb.getUserStreak(userId, teamId, daysOff)
   }
 
   const db = getDb()
@@ -162,7 +208,12 @@ export async function getUserStreak(userId: string, teamId: string): Promise<num
   const check = new Date()
   check.setHours(0, 0, 0, 0)
 
-  while (true) {
+  for (let i = 0; i < 365; i++) {
+    // Skip days off (don't count, don't break)
+    if (daysOff && daysOff.includes(check.getDay())) {
+      check.setDate(check.getDate() - 1)
+      continue
+    }
     const key = `${check.getFullYear()}-${check.getMonth()}-${check.getDate()}`
     if (days.has(key)) {
       streak++

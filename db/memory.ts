@@ -2,7 +2,7 @@
 import { randomUUID } from 'crypto'
 
 interface Team { id: string; name: string; pin: string; plainPin: string; dailyGoal: number; webhookUrl: string | null; playbook: PlaybookItem[]; workStartHour: number; workEndHour: number; orgId: string | null; createdAt: Date }
-interface User { id: string; teamId: string; name: string; email: string | null; role: 'rep' | 'manager'; personalGoal: number | null; createdAt: Date }
+interface User { id: string; teamId: string; name: string; email: string | null; role: 'rep' | 'manager'; personalGoal: number | null; daysOff: string | null; createdAt: Date }
 interface ActivityType { id: string; teamId: string; name: string; color: string; icon: string; sortOrder: number; isActive: boolean }
 interface ActivityLog { id: string; userId: string; teamId: string; activityTypeId: string; notes: string | null; outcome: 'won' | 'lost' | 'pending' | null; contactName: string | null; createdAt: Date }
 interface Challenge { id: string; teamId: string; name: string; endsAt: Date; createdAt: Date }
@@ -79,12 +79,12 @@ export const memoryDb = {
 
   // User operations
   createUser(data: { teamId: string; name: string; email?: string | null; role: 'rep' | 'manager' }): User {
-    const user: User = { id: randomUUID(), ...data, email: data.email ?? null, personalGoal: null, createdAt: new Date() }
+    const user: User = { id: randomUUID(), ...data, email: data.email ?? null, personalGoal: null, daysOff: null, createdAt: new Date() }
     users.push(user)
     return user
   },
 
-  updateUser(id: string, data: Partial<Pick<User, 'personalGoal'>>): User | undefined {
+  updateUser(id: string, data: Partial<Pick<User, 'personalGoal' | 'name' | 'daysOff'>>): User | undefined {
     const user = users.find(u => u.id === id)
     if (!user) return undefined
     Object.assign(user, data)
@@ -193,8 +193,8 @@ export const memoryDb = {
     return { teamStats, repStats, leaderboard }
   },
 
-  // Streak: consecutive days (including today) with at least 1 log
-  getUserStreak(userId: string, teamId: string): number {
+  // Streak: consecutive working days (including today) with at least 1 log
+  getUserStreak(userId: string, teamId: string, daysOff?: number[]): number {
     const userLogs = activityLogs.filter(l => l.userId === userId && l.teamId === teamId)
     if (userLogs.length === 0) return 0
 
@@ -208,7 +208,11 @@ export const memoryDb = {
     const now = new Date()
     const check = new Date(now.getFullYear(), now.getMonth(), now.getDate())
 
-    while (true) {
+    for (let i = 0; i < 365; i++) {
+      if (daysOff && daysOff.includes(check.getDay())) {
+        check.setDate(check.getDate() - 1)
+        continue
+      }
       const key = `${check.getFullYear()}-${check.getMonth()}-${check.getDate()}`
       if (days.has(key)) {
         streak++
