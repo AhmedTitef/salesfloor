@@ -3,8 +3,9 @@
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { hashPin } from "@/lib/auth";
-import { useMemoryDb } from "@/db";
+import { useMemoryDb, getDb } from "@/db";
 import { memoryDb } from "@/db/memory";
+import * as schema from "@/db/schema";
 
 const DEFAULT_ACTIVITY_TYPES = [
   { name: "Call", color: "#3B82F6", icon: "phone", sortOrder: 0 },
@@ -54,6 +55,37 @@ export async function createTeamAction(formData: FormData) {
     redirect("/dashboard");
   }
 
-  // Drizzle DB path would go here when DATABASE_URL is set
+  // Drizzle DB path
+  const db = getDb();
+  const [team] = await db.insert(schema.teams).values({
+    name: name.trim(),
+    pin: hashPin(pin),
+  }).returning();
+
+  const [manager] = await db.insert(schema.users).values({
+    teamId: team.id,
+    name: managerName.trim(),
+    role: "manager",
+  }).returning();
+
+  for (const at of DEFAULT_ACTIVITY_TYPES) {
+    await db.insert(schema.activityTypes).values({
+      teamId: team.id,
+      ...at,
+    });
+  }
+
+  const cookieStore = await cookies();
+  cookieStore.set("sf_session", JSON.stringify({
+    userId: manager.id, teamId: team.id, role: "manager",
+    userName: managerName.trim(), teamName: name.trim(), dailyGoal: 50,
+    iat: Date.now(),
+  }), {
+    httpOnly: true,
+    path: "/",
+    sameSite: "lax",
+    maxAge: 60 * 60 * 24 * 30,
+  });
+
   redirect("/dashboard");
 }
