@@ -95,7 +95,12 @@ export default function SettingsPage() {
   // Webhook
   const [webhookUrl, setWebhookUrl] = useState("");
   const [webhookSaved, setWebhookSaved] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [broadcastSent, setBroadcastSent] = useState(false);
+
+  // Edit activity type
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
 
   // New activity type form
   const [newName, setNewName] = useState("");
@@ -127,6 +132,20 @@ export default function SettingsPage() {
     fetch("/api/activity-types")
       .then((res) => res.json())
       .then((data) => setActivityTypes(data.activityTypes || []));
+  }
+
+  async function saveEditName(at: ActivityType) {
+    if (!editName.trim() || editName.trim() === at.name) {
+      setEditingId(null);
+      return;
+    }
+    await fetch("/api/activity-types", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: at.id, name: editName.trim() }),
+    });
+    setEditingId(null);
+    fetchTypes();
   }
 
   async function toggleActive(at: ActivityType) {
@@ -353,6 +372,15 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
+      {/* Advanced toggle */}
+      <button
+        onClick={() => setShowAdvanced(!showAdvanced)}
+        className="text-xs text-muted-foreground hover:text-foreground text-left"
+      >
+        {showAdvanced ? "Hide advanced settings ▲" : "Show advanced settings ▼"}
+      </button>
+
+      {showAdvanced && <>
       {/* Team Challenge */}
       <Card>
         <CardHeader className="pb-3">
@@ -433,6 +461,8 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
+      </>}
+
       {/* Activity Types List */}
       <Card>
         <CardHeader className="pb-3">
@@ -449,10 +479,24 @@ export default function SettingsPage() {
                   className="w-3 h-3 rounded-full shrink-0"
                   style={{ backgroundColor: at.color }}
                 />
-                <span className="flex-1 text-sm font-medium truncate">{at.name}</span>
-                <Badge variant={at.isActive ? "default" : "secondary"} className="text-[10px]">
-                  {at.isActive ? "Active" : "Inactive"}
-                </Badge>
+                {editingId === at.id ? (
+                  <input
+                    className="flex-1 text-sm font-medium bg-transparent border-b border-primary outline-none"
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    onBlur={() => saveEditName(at)}
+                    onKeyDown={(e) => { if (e.key === "Enter") saveEditName(at); if (e.key === "Escape") setEditingId(null); }}
+                    autoFocus
+                  />
+                ) : (
+                  <span
+                    className="flex-1 text-sm font-medium truncate cursor-pointer hover:text-primary"
+                    onClick={() => { setEditingId(at.id); setEditName(at.name); }}
+                    title="Click to rename"
+                  >
+                    {at.name}
+                  </span>
+                )}
                 <Button
                   variant="ghost"
                   size="sm"

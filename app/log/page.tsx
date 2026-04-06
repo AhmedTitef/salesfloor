@@ -159,6 +159,11 @@ export default async function LogPage() {
   // AI Coach insights
   const insights = useMemoryDb ? generateInsights(session.userId, session.teamId) : [];
 
+  // Team members for manager view
+  const teamMembers = session.role === "manager"
+    ? await queries.getTeamReps(session.teamId)
+    : [];
+
   return (
     <div className="flex flex-col gap-4 p-4 max-w-lg mx-auto w-full pb-8">
       {celebrations.length > 0 && <Confetti messages={celebrations} />}
@@ -314,26 +319,27 @@ export default async function LogPage() {
       <Separator />
 
       {/* Manager: Team overview — tap a rep to see their stats */}
-      {session.role === "manager" && teamStats.leaderboard.length > 0 && (
+      {session.role === "manager" && teamMembers.length > 0 && (
         <>
           <Separator />
           <div>
-            <h2 className="text-sm font-semibold text-muted-foreground mb-2">Your Team</h2>
+            <h2 className="text-sm font-semibold text-muted-foreground mb-2">Your Team ({teamMembers.length} reps)</h2>
             <div className="flex flex-col gap-1.5">
-              {teamStats.leaderboard.map((rep: { name: string; total: number }, i: number) => (
-                <Link
-                  key={rep.name}
-                  href={`/dashboard/rep/${encodeURIComponent(rep.name)}`}
-                  className="flex items-center gap-2 rounded-lg bg-card px-3 py-2.5 text-sm border hover:border-primary/50 transition-colors"
-                >
-                  <span className={`font-mono w-5 text-center text-xs ${i === 0 ? "text-yellow-400 font-bold" : "text-muted-foreground"}`}>
-                    {i + 1}
-                  </span>
-                  <span className="flex-1 font-medium">{rep.name}</span>
-                  <span className="font-mono font-bold">{rep.total}</span>
-                  <span className="text-xs text-muted-foreground">&rsaquo;</span>
-                </Link>
-              ))}
+              {teamMembers.map((member) => {
+                const repLogs = logs.filter((l) => l.userName === member.name);
+                const repTotal = repLogs.length;
+                return (
+                  <Link
+                    key={member.id}
+                    href={`/dashboard/rep/${encodeURIComponent(member.name)}`}
+                    className="flex items-center gap-2 rounded-lg bg-card px-3 py-2.5 text-sm border hover:border-primary/50 transition-colors"
+                  >
+                    <span className="flex-1 font-medium">{member.name}</span>
+                    <span className="font-mono font-bold">{repTotal}</span>
+                    <span className="text-xs text-muted-foreground">&rsaquo;</span>
+                  </Link>
+                );
+              })}
             </div>
           </div>
         </>

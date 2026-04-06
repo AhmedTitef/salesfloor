@@ -4,6 +4,18 @@ import { memoryDb } from './memory'
 import * as schema from './schema'
 import { eq, and, gte, lte, desc, sql } from 'drizzle-orm'
 
+// ============ Team Members ============
+
+export async function getTeamReps(teamId: string) {
+  if (useMemoryDb) {
+    return memoryDb.getUsersByTeam(teamId).filter(u => u.role === 'rep').map(u => ({ id: u.id, name: u.name }))
+  }
+  const db = getDb()
+  return db.select({ id: schema.users.id, name: schema.users.name })
+    .from(schema.users)
+    .where(and(eq(schema.users.teamId, teamId), eq(schema.users.role, 'rep')))
+}
+
 // ============ Activity Types ============
 
 export async function getActivityTypesByTeam(teamId: string) {
