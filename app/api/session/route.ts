@@ -61,6 +61,9 @@ export async function GET() {
         teamId: team.id,
         teamName: team.name,
         teamPin: team.pin,
+        dailyGoal: session.dailyGoal ?? 50,
+        orgId: session.orgId,
+        orgRole: session.orgRole,
       },
     })
   } catch (error) {

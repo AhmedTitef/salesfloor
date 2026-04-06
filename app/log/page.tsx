@@ -281,9 +281,9 @@ export default async function LogPage() {
           </div>
         )}
         {activityTypes.map((at) => (
-          <div key={at.id} className="flex flex-col items-center justify-center rounded-lg border bg-card px-3 py-2 min-w-[70px]">
+          <div key={at.id} className="flex flex-col items-center justify-center rounded-lg border bg-card px-3 py-2 min-w-[70px] shrink-0">
             <span className="font-mono text-xl font-bold">{counts[at.name] || 0}</span>
-            <span className="text-[10px] text-muted-foreground truncate max-w-[60px]">{at.name}</span>
+            <span className="text-[10px] text-muted-foreground text-center leading-tight max-w-[80px]">{at.name}</span>
           </div>
         ))}
       </div>

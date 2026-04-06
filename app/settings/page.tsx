@@ -177,13 +177,17 @@ export default function SettingsPage() {
   async function handleSaveGoal() {
     const num = parseInt(goalValue);
     if (isNaN(num) || num < 1 || num > 999) return;
-    await fetch("/api/team/goal", {
+    const res = await fetch("/api/team/goal", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ dailyGoal: num }),
     });
-    setGoalSaved(true);
-    setTimeout(() => setGoalSaved(false), 2000);
+    if (res.ok) {
+      setGoalSaved(true);
+      setTimeout(() => setGoalSaved(false), 2000);
+      // Force full page reload so the new session cookie is picked up by server components
+      window.location.reload();
+    }
   }
 
   async function handleCreateChallenge() {

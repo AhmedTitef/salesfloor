@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition, useState } from "react";
+import { useTransition, useOptimistic } from "react";
 import { logActivityAction } from "@/app/log/actions";
 import { pushToQueue } from "@/lib/offline-queue";
 
@@ -14,7 +14,10 @@ interface ActivityFormProps {
 
 export function ActivityForm({ activityTypeId, emoji, name, color, count }: ActivityFormProps) {
   const [isPending, startTransition] = useTransition();
-  const [optimisticCount, setOptimisticCount] = useState(0);
+  const [optimisticCount, addOptimistic] = useOptimistic(
+    count,
+    (current: number) => current + 1
+  );
 
   function playFeedback() {
     if (navigator.vibrate) navigator.vibrate(30);
@@ -34,20 +37,18 @@ export function ActivityForm({ activityTypeId, emoji, name, color, count }: Acti
 
   function handleTap() {
     playFeedback();
-    setOptimisticCount((c) => c + 1);
 
     if (!navigator.onLine) {
-      // Queue for later sync
       pushToQueue({ activityTypeId, timestamp: Date.now() });
       window.dispatchEvent(new CustomEvent("sf:activity-queued"));
       return;
     }
 
     startTransition(async () => {
+      addOptimistic(1);
       const formData = new FormData();
       formData.set("activityTypeId", activityTypeId);
       const result = await logActivityAction(formData);
-      setOptimisticCount(0); // Reset after server confirms (page revalidates with new count)
       if (result?.logId) {
         window.dispatchEvent(
           new CustomEvent("sf:activity-logged", { detail: { logId: result.logId } })
@@ -55,8 +56,6 @@ export function ActivityForm({ activityTypeId, emoji, name, color, count }: Acti
       }
     });
   }
-
-  const displayCount = count + optimisticCount;
 
   return (
     <button
@@ -77,7 +76,7 @@ export function ActivityForm({ activityTypeId, emoji, name, color, count }: Acti
         className="font-mono text-xs font-bold px-2 py-0.5 rounded-full"
         style={{ backgroundColor: `${color}30`, color }}
       >
-        {displayCount}
+        {optimisticCount}
       </span>
     </button>
   );
