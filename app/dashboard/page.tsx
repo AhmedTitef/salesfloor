@@ -9,6 +9,7 @@ import { useMemoryDb } from "@/db";
 import { memoryDb } from "@/db/memory";
 import * as queries from "@/db/queries";
 import { LeagueStandingsMini } from "@/components/league-standings-mini";
+import { LiveUpdates } from "@/components/live-updates";
 import { DashboardFilter } from "./filter";
 
 async function getSessionData() {
@@ -245,6 +246,7 @@ export default async function DashboardPage({
           </>
         )}
       </div>
+      <LiveUpdates />
     </div>
   );
 }
