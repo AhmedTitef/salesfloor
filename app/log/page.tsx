@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Separator } from "@/components/ui/separator";
 import { useMemoryDb } from "@/db";
 import { memoryDb } from "@/db/memory";
+import * as queries from "@/db/queries";
 import { Confetti } from "@/components/confetti";
 import { ActivityForm } from "@/components/activity-form";
 import { UndoToast } from "@/components/undo-toast";
@@ -74,9 +75,7 @@ export default async function LogPage() {
   const session = await getSessionData();
   if (!session) redirect("/");
 
-  const activityTypes = useMemoryDb
-    ? memoryDb.getActivityTypesByTeam(session.teamId).filter((t) => t.isActive)
-    : [];
+  const activityTypes = await queries.getActivityTypesByTeam(session.teamId);
 
   // Check for personal goal
   const currentUser = useMemoryDb ? memoryDb.findUserById(session.userId) : null;
@@ -89,9 +88,7 @@ export default async function LogPage() {
   // Get today's logs
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const logs = useMemoryDb
-    ? memoryDb.getActivityLogs(session.teamId, { start: today, limit: 50 })
-    : [];
+  const logs = await queries.getActivityLogs(session.teamId, { start: today, limit: 50 });
 
   // Count per activity type for current user
   const userLogs = logs.filter((l) => l.userName === session.userName);
@@ -102,12 +99,12 @@ export default async function LogPage() {
   const totalToday = Object.values(counts).reduce((sum, c) => sum + c, 0);
 
   // Streak & personal best
-  const streak = useMemoryDb ? memoryDb.getUserStreak(session.userId, session.teamId) : 0;
-  const pb = useMemoryDb ? memoryDb.getUserPersonalBest(session.userId, session.teamId) : { best: 0, isNewBest: false };
+  const streak = await queries.getUserStreak(session.userId, session.teamId);
+  const pb = await queries.getUserPersonalBest(session.userId, session.teamId);
 
   // Leaderboard position
-  const teamStats = useMemoryDb ? memoryDb.getStats(session.teamId, today, new Date()) : { leaderboard: [] };
-  const myRank = teamStats.leaderboard.findIndex((r) => r.name === session.userName) + 1;
+  const teamStats = await queries.getStats(session.teamId, today, new Date());
+  const myRank = teamStats.leaderboard.findIndex((r: { name: string }) => r.name === session.userName) + 1;
   const leader = teamStats.leaderboard[0];
   const behindBy = leader && leader.name !== session.userName ? leader.total - totalToday : 0;
 
@@ -134,7 +131,7 @@ export default async function LogPage() {
   }
 
   // Rank tier
-  const allTimeCount = useMemoryDb ? memoryDb.getUserAllTimeCount(session.userId, session.teamId) : 0;
+  const allTimeCount = await queries.getUserAllTimeCount(session.userId, session.teamId);
   const rankTier = getRankTier(allTimeCount);
   const nextTier = getNextTier(allTimeCount);
 

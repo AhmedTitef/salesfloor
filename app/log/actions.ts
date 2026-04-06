@@ -4,11 +4,11 @@ import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { useMemoryDb } from "@/db";
 import { memoryDb } from "@/db/memory";
+import * as queries from "@/db/queries";
 import { emitToTeam } from "@/lib/events";
 
 export async function logActivityAction(formData: FormData) {
   const activityTypeId = formData.get("activityTypeId") as string;
-  const contactName = (formData.get("contactName") as string)?.trim() || null;
   if (!activityTypeId) return { error: "Missing activity type" };
 
   const cookieStore = await cookies();
@@ -17,21 +17,18 @@ export async function logActivityAction(formData: FormData) {
 
   const session = JSON.parse(raw);
 
+  const log = await queries.createActivityLog({
+    userId: session.userId,
+    teamId: session.teamId,
+    activityTypeId,
+  });
+
   if (useMemoryDb) {
-    const log = memoryDb.createActivityLog({
-      userId: session.userId,
-      teamId: session.teamId,
-      activityTypeId,
-      contactName,
-    });
     const at = memoryDb.findActivityTypeById(activityTypeId);
     memoryDb.addAuditEntry({
       teamId: session.teamId, userId: session.userId, userName: session.userName,
       action: "activity.logged", detail: at?.name || activityTypeId,
     });
-    emitToTeam(session.teamId, "activity", { userName: session.userName });
-
-    // Fire webhook if configured
     const team = memoryDb.findTeamById(session.teamId);
     if (team?.webhookUrl) {
       fetch(team.webhookUrl, {
@@ -43,13 +40,11 @@ export async function logActivityAction(formData: FormData) {
         }),
       }).catch(() => {});
     }
-
-    revalidatePath("/log");
-    return { logId: log.id };
   }
 
+  emitToTeam(session.teamId, "activity", { userName: session.userName });
   revalidatePath("/log");
-  return {};
+  return { logId: log.id };
 }
 
 export async function tagOutcomeAction(logId: string, outcome: "won" | "lost" | "pending" | null) {
@@ -77,8 +72,9 @@ export async function undoActivityAction(logId: string) {
 
   const session = JSON.parse(raw);
 
+  await queries.deleteActivityLog(logId, session.userId);
+
   if (useMemoryDb) {
-    memoryDb.deleteActivityLog(logId, session.userId);
     memoryDb.addAuditEntry({
       teamId: session.teamId, userId: session.userId, userName: session.userName,
       action: "activity.undone", detail: logId,

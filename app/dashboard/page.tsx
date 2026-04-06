@@ -7,6 +7,7 @@ import { Separator } from "@/components/ui/separator";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useMemoryDb } from "@/db";
 import { memoryDb } from "@/db/memory";
+import * as queries from "@/db/queries";
 import { LeagueStandingsMini } from "@/components/league-standings-mini";
 import { DashboardFilter } from "./filter";
 
@@ -61,9 +62,7 @@ export default async function DashboardPage({
   const period = (params.period as "today" | "week" | "month") || "today";
   const start = getStartDate(period);
 
-  const stats = useMemoryDb
-    ? memoryDb.getStats(session.teamId, start, new Date())
-    : { teamStats: {}, repStats: [], leaderboard: [] };
+  const stats = await queries.getStats(session.teamId, start, new Date());
 
   const totalActivities = Object.values(stats.teamStats).reduce((sum, c) => sum + c, 0);
   const topPerformer = stats.leaderboard?.[0]?.name || "---";
